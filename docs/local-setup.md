@@ -21,6 +21,7 @@ cd /Users/zheyangchen/Documents/Codex/2026-06-09/i-would-like-you-to-help
 ./market-monitor emergency-check --config config/config.local.json
 ./market-monitor calendar-notify --config config/config.local.json
 ./market-monitor ai-smoke-test --config config/config.local.json --dry-run
+./market-monitor close-digest --config config/config.local.json --dry-run
 ./market-monitor setup-launchd --config config/config.local.json
 ```
 

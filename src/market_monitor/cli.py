@@ -560,7 +560,7 @@ def extract_openai_text(response: dict[str, Any]) -> str:
     return "\n".join(chunks).strip()
 
 
-def openai_smoke_test() -> str:
+def call_openai(input_text: str, max_output_tokens: int = 500) -> str:
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is not set.")
@@ -568,11 +568,8 @@ def openai_smoke_test() -> str:
     model = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
     payload = {
         "model": model,
-        "input": (
-            "Write one concise phone notification confirming the OpenAI API works for a market "
-            "monitor project. Mention that this is only a test, not investment advice."
-        ),
-        "max_output_tokens": 120,
+        "input": input_text,
+        "max_output_tokens": max_output_tokens,
     }
     request = urllib.request.Request(
         OPENAI_RESPONSES_URL,
@@ -591,6 +588,107 @@ def openai_smoke_test() -> str:
     if not text:
         raise RuntimeError("OpenAI API returned no text output.")
     return text
+
+
+def openai_smoke_test() -> str:
+    return call_openai(
+        (
+            "Write one concise phone notification confirming the OpenAI API works for a market "
+            "monitor project. Mention that this is only a test, not investment advice."
+        ),
+        max_output_tokens=120,
+    )
+
+
+def quote_lines(symbols: list[str], quotes_by_symbol: dict[str, dict[str, Any]]) -> list[str]:
+    lines = []
+    for symbol in symbols:
+        quote = quotes_by_symbol.get(symbol, {})
+        price = quote.get("regularMarketPrice")
+        pct = quote.get("regularMarketChangePercent")
+        if isinstance(price, (int, float)) and isinstance(pct, (int, float)):
+            lines.append(f"{symbol}: {price:,.2f}, {pct:+.2f}%")
+    return lines
+
+
+def build_close_digest(config: dict[str, Any], config_path: Path) -> tuple[str, str]:
+    tz = ZoneInfo(config.get("market_timezone", "America/New_York"))
+    now = dt.datetime.now(tz)
+    indexes, watchlist = configured_symbol_groups(config, config_path)
+    symbols = unique_symbols(indexes + watchlist)
+    quotes, error = fetch_quotes_for_display(config, symbols)
+    by_symbol = quote_by_symbol(quotes)
+
+    threshold = float(config.get("price_alert_threshold_pct", 1.5))
+    _, index_alerts = format_quote_table(indexes, by_symbol, threshold)
+    _, watchlist_alerts = format_quote_table(watchlist, by_symbol, threshold)
+    events = market_calendar(config, now.date())
+    upcoming_events = [
+        f"{event.date.isoformat()} [{event.impact}] {event.title}"
+        for event in events
+        if event.date >= now.date()
+    ][:8]
+
+    prompt = "\n".join(
+        [
+            "Create a concise market-close style phone digest for a personal market monitor.",
+            "This is a first test: use only the structured market data below. Do not invent news.",
+            "Keep it under 850 characters. Use this format:",
+            "Market Close:",
+            "Indexes: ...",
+            "Top movers: ...",
+            "Watch tomorrow: ...",
+            "Tone: factual, cautious, not investment advice.",
+            "",
+            f"Generated at: {now:%Y-%m-%d %H:%M %Z}",
+            "",
+            "Indexes:",
+            "\n".join(quote_lines(indexes, by_symbol)) or "No index data.",
+            "",
+            "Watchlist:",
+            "\n".join(quote_lines(watchlist, by_symbol)) or "No watchlist data.",
+            "",
+            "Threshold alerts:",
+            "\n".join(index_alerts + watchlist_alerts) or "None.",
+            "",
+            "Upcoming calendar events:",
+            "\n".join(upcoming_events) or "None found.",
+            "",
+            f"Data-source error, if any: {error or 'None'}",
+        ]
+    )
+    digest = call_openai(prompt, max_output_tokens=350)
+    full_markdown = "\n".join(
+        [
+            "# Market Close Digest",
+            "",
+            f"Generated: {now:%Y-%m-%d %H:%M:%S %Z}",
+            "",
+            "## Phone Summary",
+            "",
+            digest,
+            "",
+            "## Raw Inputs",
+            "",
+            "### Indexes",
+            "",
+            "\n".join(f"- {line}" for line in quote_lines(indexes, by_symbol)) or "- No index data.",
+            "",
+            "### Watchlist",
+            "",
+            "\n".join(f"- {line}" for line in quote_lines(watchlist, by_symbol)) or "- No watchlist data.",
+            "",
+            "### Upcoming Calendar Events",
+            "",
+            "\n".join(f"- {line}" for line in upcoming_events) or "- None found.",
+            "",
+            "### Data Source Error",
+            "",
+            error or "None",
+            "",
+        ]
+    )
+    return digest, full_markdown
 
 
 def notify(
@@ -695,6 +793,7 @@ def main() -> int:
             "emergency-check",
             "calendar-notify",
             "ai-smoke-test",
+            "close-digest",
             "setup-launchd",
         ],
         help="action to run",
@@ -753,6 +852,17 @@ def main() -> int:
         ntfy_config = config.get("notifications", {}).get("ntfy", {})
         priority = ntfy_config.get("default_priority", "default")
         notify(config, title, message, args.dry_run, priority, ["robot"])
+    elif args.command == "close-digest":
+        try:
+            message, markdown = build_close_digest(config, args.config)
+        except Exception as exc:  # noqa: BLE001 - CLI should return a clear setup error
+            raise SystemExit(f"Close digest failed: {exc}") from exc
+        digest_path = out_dir / "market_close_digest.md"
+        digest_path.write_text(markdown, encoding="utf-8")
+        title = config.get("notifications", {}).get("title", "Market Monitor")
+        ntfy_config = config.get("notifications", {}).get("ntfy", {})
+        priority = ntfy_config.get("default_priority", "default")
+        notify(config, title, message, args.dry_run, priority, ["bar_chart"])
     elif args.command == "setup-launchd":
         paths = write_launchd_plists(args.config, sys.executable, out_dir)
         print("Wrote launchd plists:")

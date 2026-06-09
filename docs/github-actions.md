@@ -69,3 +69,9 @@ To test OpenAI API access, select:
 ```text
 ai-smoke-test
 ```
+
+To test the first market-close digest, select:
+
+```text
+close-digest
+```

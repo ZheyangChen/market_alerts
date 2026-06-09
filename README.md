@@ -78,6 +78,12 @@ Manual API test:
 Actions → Market Monitor → Run workflow → command: ai-smoke-test
 ```
 
+First market-close digest test:
+
+```text
+Actions → Market Monitor → Run workflow → command: close-digest
+```
+
 ## Current Watchlist
 
 Indexes:
@@ -99,7 +105,15 @@ Ticker aliases:
 
 ## Next Step: AI Market-Close Digest
 
-The right next module is a market-close digest around 4:20 PM ET:
+The first market-close digest is available as:
+
+```bash
+./market-monitor close-digest --config config/config.local.json
+```
+
+It currently uses quotes, threshold alerts, and the local market-calendar window. News search is intentionally left out of the first test so the API and notification path stay easy to validate.
+
+The next version should improve:
 
 - what happened today
 - likely drivers from current news
