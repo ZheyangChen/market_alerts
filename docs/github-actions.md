@@ -18,6 +18,14 @@ zc-market-alerts-d3b98e07-d0b3-4ce2-b28d-571b8ac97c07
 
 Do not commit this value into tracked config files.
 
+For OpenAI-powered summaries, also create:
+
+```text
+OPENAI_API_KEY
+```
+
+Value: your OpenAI Platform API key.
+
 ## Optional Variable
 
 You may create this repository variable:
@@ -27,6 +35,14 @@ NTFY_SERVER=https://ntfy.sh
 ```
 
 If omitted, the workflow defaults to `https://ntfy.sh`.
+
+You may also create:
+
+```text
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+If omitted, the workflow defaults to `gpt-5.4-mini`.
 
 ## Schedules
 
@@ -46,4 +62,10 @@ Go to GitHub Actions, choose `Market Monitor`, click `Run workflow`, and select:
 
 ```text
 notify
+```
+
+To test OpenAI API access, select:
+
+```text
+ai-smoke-test
 ```

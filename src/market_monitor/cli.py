@@ -34,6 +34,7 @@ FED_FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
 YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
 YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart"
 STOOQ_QUOTE_URL = "https://stooq.com/q/l/"
+OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 
 
 @dataclass(frozen=True)
@@ -546,6 +547,52 @@ def send_ntfy(ntfy_config: dict[str, Any], title: str, message: str, priority: s
         response.read()
 
 
+def extract_openai_text(response: dict[str, Any]) -> str:
+    if isinstance(response.get("output_text"), str):
+        return response["output_text"].strip()
+
+    chunks: list[str] = []
+    for item in response.get("output", []):
+        for content in item.get("content", []):
+            text = content.get("text")
+            if isinstance(text, str):
+                chunks.append(text)
+    return "\n".join(chunks).strip()
+
+
+def openai_smoke_test() -> str:
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set.")
+
+    model = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
+    payload = {
+        "model": model,
+        "input": (
+            "Write one concise phone notification confirming the OpenAI API works for a market "
+            "monitor project. Mention that this is only a test, not investment advice."
+        ),
+        "max_output_tokens": 120,
+    }
+    request = urllib.request.Request(
+        OPENAI_RESPONSES_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "market-monitor/1.0 (+local script)",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        data = json.loads(response.read().decode("utf-8"))
+
+    text = extract_openai_text(data)
+    if not text:
+        raise RuntimeError("OpenAI API returned no text output.")
+    return text
+
+
 def notify(
     config: dict[str, Any],
     title: str,
@@ -641,7 +688,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Market monitoring and calendar notifications")
     parser.add_argument(
         "command",
-        choices=["report", "calendar", "notify", "emergency-check", "calendar-notify", "setup-launchd"],
+        choices=[
+            "report",
+            "calendar",
+            "notify",
+            "emergency-check",
+            "calendar-notify",
+            "ai-smoke-test",
+            "setup-launchd",
+        ],
         help="action to run",
     )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
@@ -689,6 +744,15 @@ def main() -> int:
         ntfy_config = config.get("notifications", {}).get("ntfy", {})
         priority = ntfy_config.get("default_priority", "default")
         notify(config, title, message, args.dry_run, priority, ["calendar"])
+    elif args.command == "ai-smoke-test":
+        try:
+            message = openai_smoke_test()
+        except Exception as exc:  # noqa: BLE001 - CLI should return a clear setup error
+            raise SystemExit(f"AI smoke test failed: {exc}") from exc
+        title = config.get("notifications", {}).get("title", "Market Monitor")
+        ntfy_config = config.get("notifications", {}).get("ntfy", {})
+        priority = ntfy_config.get("default_priority", "default")
+        notify(config, title, message, args.dry_run, priority, ["robot"])
     elif args.command == "setup-launchd":
         paths = write_launchd_plists(args.config, sys.executable, out_dir)
         print("Wrote launchd plists:")

@@ -20,6 +20,7 @@ cd /Users/zheyangchen/Documents/Codex/2026-06-09/i-would-like-you-to-help
 ./market-monitor notify --config config/config.local.json
 ./market-monitor emergency-check --config config/config.local.json
 ./market-monitor calendar-notify --config config/config.local.json
+./market-monitor ai-smoke-test --config config/config.local.json --dry-run
 ./market-monitor setup-launchd --config config/config.local.json
 ```
 
@@ -69,6 +70,25 @@ Local config may contain:
 ```
 
 For GitHub Actions, store the topic as the `NTFY_TOPIC` repository secret instead.
+
+## OpenAI API Test
+
+Do not paste your API key into chat or commit it to git.
+
+For a one-time local test, run this in your own terminal:
+
+```bash
+cd /Users/zheyangchen/Documents/Codex/2026-06-09/market_alerts
+OPENAI_API_KEY="your_api_key_here" ./market-monitor ai-smoke-test --config config/config.local.json --dry-run
+```
+
+If that works, send the AI-generated test message to your phone:
+
+```bash
+OPENAI_API_KEY="your_api_key_here" ./market-monitor ai-smoke-test --config config/config.local.json
+```
+
+For GitHub Actions, add the key as the `OPENAI_API_KEY` repository secret.
 
 ## Data Sources
 

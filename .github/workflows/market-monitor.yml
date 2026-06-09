@@ -12,6 +12,7 @@ on:
           - notify
           - emergency-check
           - calendar-notify
+          - ai-smoke-test
           - report
           - calendar
   schedule:
@@ -36,6 +37,8 @@ jobs:
     env:
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
       NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.4-mini' }}
       PYTHONPATH: src
     steps:
       - name: Check out repository

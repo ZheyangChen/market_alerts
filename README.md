@@ -60,6 +60,24 @@ Add personal tickers in `config/watchlist.txt`, one ticker per line.
 
 The workflow uses `config/config.github.json`, which has ntfy enabled but keeps the topic empty. At runtime, the script reads `NTFY_TOPIC` from GitHub Secrets.
 
+For AI features, add another repository secret:
+
+```text
+OPENAI_API_KEY
+```
+
+You can optionally add a repository variable:
+
+```text
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+Manual API test:
+
+```text
+Actions → Market Monitor → Run workflow → command: ai-smoke-test
+```
+
 ## Current Watchlist
 
 Indexes:
