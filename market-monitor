@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+set -eu
+PYTHONPATH="${PYTHONPATH:-}:src" exec python3 -m market_monitor.cli "$@"

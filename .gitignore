@@ -1,0 +1,20 @@
+# Local config and secrets
+config/config.local.json
+.env
+
+# Generated outputs
+outputs/
+work/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

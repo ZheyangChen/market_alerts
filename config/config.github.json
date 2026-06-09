@@ -1,0 +1,46 @@
+{
+  "indexes": ["SPY", "QQQ", "VTI", "DIA", "IWM"],
+  "watchlist": [
+    "GLD",
+    "VXUS",
+    "NVDA",
+    "BRK.A",
+    "BYD",
+    "TSLA",
+    "SOXL",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "AVGO",
+    "JPM",
+    "LLY"
+  ],
+  "watchlist_file": "watchlist.txt",
+  "symbol_aliases": {
+    "BRK.A": "BRK-A",
+    "BYD": "BYDDY"
+  },
+  "market_timezone": "America/New_York",
+  "price_alert_threshold_pct": 1.5,
+  "emergency_alert_threshold_pct": 3.0,
+  "emergency_index_alert_threshold_pct": 2.0,
+  "calendar_lookback_days": 3,
+  "calendar_lookahead_days": 14,
+  "output_dir": "../outputs",
+  "notifications": {
+    "title": "Market Monitor",
+    "enabled": true,
+    "macos": false,
+    "ntfy": {
+      "enabled": true,
+      "server": "https://ntfy.sh",
+      "topic": "",
+      "default_priority": "default",
+      "emergency_priority": "urgent"
+    }
+  },
+  "manual_events": [],
+  "ics_urls": []
+}

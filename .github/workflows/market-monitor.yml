@@ -1,0 +1,64 @@
+name: Market Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Command to run"
+        required: true
+        default: "notify"
+        type: choice
+        options:
+          - notify
+          - emergency-check
+          - calendar-notify
+          - report
+          - calendar
+  schedule:
+    # GitHub cron is UTC. These map to 10:00, 13:00, and 16:00 America/New_York during EDT.
+    - cron: "0 14,17,20 * * 1-5"
+    # Intraday emergency checks during regular U.S. market hours in EDT.
+    - cron: "*/15 14-20 * * 1-5"
+    # Market-close summary placeholder, 16:20 America/New_York during EDT.
+    - cron: "20 20 * * 1-5"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: market-monitor-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      NTFY_SERVER: ${{ vars.NTFY_SERVER || 'https://ntfy.sh' }}
+      PYTHONPATH: src
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Choose command
+        id: choose
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "command=${{ inputs.command }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.schedule }}" == "20 20 * * 1-5" ]]; then
+            echo "command=calendar-notify" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.schedule }}" == "*/15 14-20 * * 1-5" ]]; then
+            echo "command=emergency-check" >> "$GITHUB_OUTPUT"
+          else
+            echo "command=notify" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run market monitor
+        run: python -m market_monitor.cli "${{ steps.choose.outputs.command }}" --config config/config.github.json
