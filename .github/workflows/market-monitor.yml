@@ -19,9 +19,7 @@ on:
   schedule:
     # GitHub cron is UTC. These map to 10:00, 13:00, and 16:00 America/New_York during EDT.
     - cron: "0 14,17,20 * * 1-5"
-    # Intraday emergency checks during regular U.S. market hours in EDT.
-    - cron: "*/15 14-20 * * 1-5"
-    # Market-close summary placeholder, 16:20 America/New_York during EDT.
+    # Market-close digest, 16:20 America/New_York during EDT.
     - cron: "20 20 * * 1-5"
 
 permissions:
@@ -61,8 +59,6 @@ jobs:
             echo "command=${{ inputs.command }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event.schedule }}" == "20 20 * * 1-5" ]]; then
             echo "command=close-digest" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event.schedule }}" == "*/15 14-20 * * 1-5" ]]; then
-            echo "command=emergency-check" >> "$GITHUB_OUTPUT"
           else
             echo "command=notify" >> "$GITHUB_OUTPUT"
           fi

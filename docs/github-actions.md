@@ -51,8 +51,9 @@ The first workflow uses UTC schedules that map to EDT:
 - 10:00 AM ET snapshot: `14:00 UTC`
 - 1:00 PM ET snapshot: `17:00 UTC`
 - 4:00 PM ET snapshot: `20:00 UTC`
-- 4:20 PM ET market-close placeholder: `20:20 UTC`
-- emergency checks: every 15 minutes during the EDT market window
+- 4:20 PM ET market-close digest: `20:20 UTC`
+
+The `emergency-check` command is available for manual runs, but it is not currently scheduled. GitHub runners do not preserve `outputs/alert_state.json` between runs, so scheduled emergency checks need persistent state before they can avoid repeated alerts.
 
 This will need review around daylight saving time changes. A later version can add explicit timezone handling if GitHub's current timezone-aware scheduling support is available for the repository.
 

@@ -5,7 +5,7 @@ Personal market monitoring project for scheduled stock/index snapshots, emergenc
 ## What It Does
 
 - Sends routine market snapshots for major indexes and a watchlist.
-- Sends urgent alerts when indexes or watched stocks move beyond configured thresholds.
+- Can send urgent alerts when indexes or watched stocks move beyond configured thresholds.
 - Writes local markdown reports for snapshots and market-calendar windows.
 - Supports ntfy push notifications, including default and urgent priorities.
 - Is structured to run locally or from GitHub Actions when the Mac is asleep/off.
@@ -49,6 +49,19 @@ Useful docs:
 ```
 
 Add personal tickers in `config/watchlist.txt`, one ticker per line.
+
+## Current GitHub Schedule
+
+GitHub Actions runs on UTC cron. The current automated schedule is intentionally simple:
+
+```text
+10:00 AM ET, weekdays -> notify
+1:00 PM ET, weekdays  -> notify
+4:00 PM ET, weekdays  -> notify
+4:20 PM ET, weekdays  -> close-digest
+```
+
+The `emergency-check` command is still available for manual runs, but it is not scheduled automatically yet. GitHub runners are ephemeral, so local de-duplication files do not persist between 15-minute runs. Before restoring automatic emergency alerts, the project needs a persistent throttling mechanism.
 
 ## GitHub Setup
 
