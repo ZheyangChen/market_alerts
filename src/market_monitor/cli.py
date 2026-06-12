@@ -76,6 +76,15 @@ def output_dir(config: dict[str, Any], config_path: Path) -> Path:
     return path
 
 
+def state_dir(config: dict[str, Any], config_path: Path) -> Path:
+    raw = config.get("state_dir", config.get("output_dir", "../../outputs"))
+    path = Path(raw)
+    if not path.is_absolute():
+        path = (config_path.parent / path).resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def symbols_from_file(config: dict[str, Any], config_path: Path) -> list[str]:
     raw = config.get("watchlist_file")
     if not raw:
@@ -825,7 +834,7 @@ def main() -> int:
             return 0
         today = now.date()
         alerts, error = emergency_alerts(config, args.config)
-        new_alerts = new_daily_alerts(alerts, out_dir, today)
+        new_alerts = new_daily_alerts(alerts, state_dir(config, args.config), today)
         if error:
             print(f"Emergency check data-source error: {error}")
         if new_alerts:

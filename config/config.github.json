@@ -29,6 +29,7 @@
   "calendar_lookback_days": 3,
   "calendar_lookahead_days": 14,
   "output_dir": "../outputs",
+  "state_dir": "../state",
   "notifications": {
     "title": "Market Monitor",
     "enabled": true,

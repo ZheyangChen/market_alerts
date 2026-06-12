@@ -19,11 +19,13 @@ on:
   schedule:
     # GitHub cron is UTC. These map to 10:00, 13:00, and 16:00 America/New_York during EDT.
     - cron: "0 14,17,20 * * 1-5"
+    # Emergency checks during regular U.S. market hours in EDT, offset from regular snapshots.
+    - cron: "15,30,45 13-20 * * 1-5"
     # Market-close digest, 16:20 America/New_York during EDT.
     - cron: "20 20 * * 1-5"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -59,9 +61,25 @@ jobs:
             echo "command=${{ inputs.command }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.event.schedule }}" == "20 20 * * 1-5" ]]; then
             echo "command=close-digest" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event.schedule }}" == "15,30,45 13-20 * * 1-5" ]]; then
+            echo "command=emergency-check" >> "$GITHUB_OUTPUT"
           else
             echo "command=notify" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Run market monitor
         run: python -m market_monitor.cli "${{ steps.choose.outputs.command }}" --config config/config.github.json
+
+      - name: Persist emergency alert state
+        if: steps.choose.outputs.command == 'emergency-check'
+        shell: bash
+        run: |
+          if [[ -n "$(git status --short state/alert_state.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/alert_state.json
+            git commit -m "Update emergency alert state [skip ci]"
+            git push
+          else
+            echo "No alert state changes to persist."
+          fi

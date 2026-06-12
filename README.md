@@ -58,10 +58,11 @@ GitHub Actions runs on UTC cron. The current automated schedule is intentionally
 10:00 AM ET, weekdays -> notify
 1:00 PM ET, weekdays  -> notify
 4:00 PM ET, weekdays  -> notify
+9:30 AM-4:45 PM ET, weekdays at :15/:30/:45 -> emergency-check
 4:20 PM ET, weekdays  -> close-digest
 ```
 
-The `emergency-check` command is still available for manual runs, but it is not scheduled automatically yet. GitHub runners are ephemeral, so local de-duplication files do not persist between 15-minute runs. Before restoring automatic emergency alerts, the project needs a persistent throttling mechanism.
+Emergency checks are offset from regular snapshots so they do not run at the exact same minute. GitHub persists emergency alert state in `state/alert_state.json` so the same alert is not repeated all day.
 
 ## GitHub Setup
 

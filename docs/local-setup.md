@@ -32,7 +32,7 @@ cd /Users/zheyangchen/Documents/Codex/2026-06-09/i-would-like-you-to-help
 - index emergency threshold: `2.0%`
 - watchlist emergency threshold: `3.0%`
 
-It stores local daily alert state in `outputs/alert_state.json` so the same emergency alert is not repeated all day on the same machine.
+It stores local daily alert state in `outputs/alert_state.json` so the same emergency alert is not repeated all day on the same machine. GitHub Actions uses `state/alert_state.json` instead so state can persist across hosted runners.
 
 ## Watchlist
 
