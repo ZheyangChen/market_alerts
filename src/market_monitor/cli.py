@@ -20,6 +20,8 @@ import re
 import subprocess
 import sys
 import textwrap
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -35,6 +37,7 @@ YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
 YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart"
 STOOQ_QUOTE_URL = "https://stooq.com/q/l/"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+NTFY_RETRY_DELAYS_SECONDS = (1.0, 2.0)
 
 
 @dataclass(frozen=True)
@@ -499,15 +502,28 @@ def emergency_alerts(config: dict[str, Any], config_path: Path) -> tuple[list[st
     return alerts, error
 
 
+def alert_identity(alert: str) -> str:
+    return re.sub(r" moved [+-]?\d+(?:\.\d+)?%$", "", alert)
+
+
 def new_daily_alerts(alerts: list[str], out_dir: Path, today: dt.date) -> list[str]:
     state = read_alert_state(out_dir)
     key = today.isoformat()
-    seen = set(state.get(key, []))
-    new = [alert for alert in alerts if alert not in seen]
-    if new:
-        state = {key: sorted(seen.union(new))}
-        write_alert_state(out_dir, state)
-    return new
+    seen = {alert_identity(alert) for alert in state.get(key, [])}
+    return [alert for alert in alerts if alert_identity(alert) not in seen]
+
+
+def record_daily_alerts(alerts: list[str], out_dir: Path, today: dt.date) -> None:
+    if not alerts:
+        return
+    state = read_alert_state(out_dir)
+    key = today.isoformat()
+    recorded = {
+        alert_identity(alert): alert
+        for alert in state.get(key, [])
+    }
+    recorded.update({alert_identity(alert): alert for alert in alerts})
+    write_alert_state(out_dir, {key: sorted(recorded.values())})
 
 
 def is_market_hours(now: dt.datetime) -> bool:
@@ -539,21 +555,37 @@ def send_ntfy(ntfy_config: dict[str, Any], title: str, message: str, priority: s
     server = os.environ.get("NTFY_SERVER", str(ntfy_config.get("server", "https://ntfy.sh"))).rstrip("/")
     topic = os.environ.get("NTFY_TOPIC", str(ntfy_config.get("topic", ""))).strip()
     if not topic:
-        print("ntfy topic is not configured.")
-        return
-    request = urllib.request.Request(
-        f"{server}/{urllib.parse.quote(topic)}",
-        data=message.encode("utf-8"),
-        method="POST",
-        headers={
-            "Title": title,
-            "Priority": priority,
-            "Tags": ",".join(tags),
-            "User-Agent": "market-monitor/1.0 (+local script)",
-        },
-    )
-    with urllib.request.urlopen(request, timeout=15) as response:
-        response.read()
+        raise RuntimeError("ntfy is enabled but NTFY_TOPIC is not configured.")
+
+    attempts = len(NTFY_RETRY_DELAYS_SECONDS) + 1
+    for attempt in range(1, attempts + 1):
+        request = urllib.request.Request(
+            f"{server}/{urllib.parse.quote(topic)}",
+            data=message.encode("utf-8"),
+            method="POST",
+            headers={
+                "Title": title,
+                "Priority": priority,
+                "Tags": ",".join(tags),
+                "User-Agent": "market-monitor/1.0 (+local script)",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                response.read()
+            print("ntfy delivery succeeded.")
+            return
+        except Exception as exc:  # noqa: BLE001 - classify network failures before retrying
+            retryable = isinstance(exc, (urllib.error.URLError, TimeoutError))
+            if isinstance(exc, urllib.error.HTTPError):
+                retryable = exc.code == 429 or 500 <= exc.code < 600
+            if not retryable or attempt == attempts:
+                raise RuntimeError(
+                    f"ntfy delivery failed after {attempt} attempt(s): {type(exc).__name__}: {exc}"
+                ) from exc
+            delay = NTFY_RETRY_DELAYS_SECONDS[attempt - 1]
+            print(f"ntfy delivery attempt {attempt} failed; retrying in {delay:g}s.")
+            time.sleep(delay)
 
 
 def extract_openai_text(response: dict[str, Any]) -> str:
@@ -842,6 +874,8 @@ def main() -> int:
             ntfy_config = config.get("notifications", {}).get("ntfy", {})
             priority = ntfy_config.get("emergency_priority", "urgent")
             notify(config, title, "Emergency: " + "; ".join(new_alerts), args.dry_run, priority, ["rotating_light"])
+            if not args.dry_run:
+                record_daily_alerts(new_alerts, state_dir(config, args.config), today)
         else:
             print("No new emergency alerts.")
     elif args.command == "calendar-notify":

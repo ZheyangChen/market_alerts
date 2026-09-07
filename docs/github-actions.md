@@ -13,10 +13,14 @@ NTFY_TOPIC
 Value:
 
 ```text
-zc-market-alerts-d3b98e07-d0b3-4ce2-b28d-571b8ac97c07
+Generate a private, random topic name and keep it out of tracked files.
 ```
 
 Do not commit this value into tracked config files.
+
+If a topic has ever appeared in a public commit, create a new topic, update the
+GitHub secret, and subscribe the phone to the new topic. Removing the old value
+from the latest file does not remove it from Git history.
 
 For OpenAI-powered summaries, also create:
 
@@ -54,7 +58,11 @@ The first workflow uses UTC schedules that map to EDT:
 - emergency checks: `:15`, `:30`, and `:45` during the EDT market window
 - 4:20 PM ET market-close digest: `20:20 UTC`
 
-Emergency checks persist alert state in `state/alert_state.json`. The workflow commits that file back to the repository only when a new emergency alert changes it, which keeps later runs from sending the same alert again that day.
+Emergency checks persist alert state in `state/alert_state.json`. The workflow commits that file back to the repository only after a new emergency alert is delivered. Later percentage changes for the same symbol do not produce duplicate alerts that day.
+
+ntfy delivery retries transient network, rate-limit, and server failures. A
+missing `NTFY_TOPIC` or a permanent delivery failure fails the workflow with an
+explicit error instead of reporting a misleading success.
 
 This will need review around daylight saving time changes. A later version can add explicit timezone handling if GitHub's current timezone-aware scheduling support is available for the repository.
 

@@ -62,7 +62,7 @@ GitHub Actions runs on UTC cron. The current automated schedule is intentionally
 4:20 PM ET, weekdays  -> close-digest
 ```
 
-Emergency checks are offset from regular snapshots so they do not run at the exact same minute. GitHub persists emergency alert state in `state/alert_state.json` so the same alert is not repeated all day.
+Emergency checks are offset from regular snapshots so they do not run at the exact same minute. GitHub persists emergency alert state in `state/alert_state.json` after successful delivery so the same symbol is not repeated all day as its percentage changes.
 
 ## GitHub Setup
 
